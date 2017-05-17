@@ -107,18 +107,43 @@ int add_func(const Line &l)
     cout << "handle r, imm8" << endl;
     int reg_val = reg_to_val(l[2].substr(1));
 
-    string imm32_str = l[1].substr(1);
-    int imm32_num = std::stoi(imm32_str);
+    //string imm_str = string{"$0xf"}.substr(1);
+    string imm_str = l[1].substr(1);
+    cout << "imm_str: " << imm_str << endl;
+    u32 imm_num = std::stoul(imm_str, 0, 0);
+    cout << "imm_num: " << imm_num << endl;
+    //u32 imm_num = std::stoul("0xabcdef12", 0, 16);
+
+    u8 op = 0x83;
+    u8 imm_size = 1; // 1 byte
+    if (imm_num <= 0xff)
+    {
+      cout << imm_num << ": imm8" << endl;
+
+    }
+    #if 0
+    else if ((imm_num <=  0xffff) != 0)
+         {
+           cout << imm_num << ": imm16" << endl;
+           imm_size = 2;
+           op = 0x81;
+         }
+    #endif
+         else
+         {
+           cout << imm_num << ": imm32" << endl;
+           imm_size = 4;
+           op = 0x81;
+         }
 
     u8 mod_rm = 0xc0 | reg_val;
-    u8 op = 0x83;
 
+    #if 0
     cout << "machine code: ";
     cout << hex << op;
     cout << imm32_num << endl;
     cout << dec;
 
-    #if 0
     ofs << hex << 0xb8 + reg_val;
     ofs << imm32_num << endl;
     ofs << dec;
@@ -126,7 +151,7 @@ int add_func(const Line &l)
 
     fwrite(&op, 1, 1, fs);
     fwrite(&mod_rm, 1, 1, fs);
-    fwrite(&imm32_num, 1, 4, fs);
+    fwrite(&imm_num, 1, imm_size, fs);
   }
   return 0;
 }
@@ -158,7 +183,7 @@ int mov_func(const Line &l)
     int reg_val = reg_to_val(l[2].substr(1));
 
     string imm32_str = l[1].substr(1);
-    int imm32_num = std::stoi(imm32_str);
+    u32 imm32_num = std::stoul(imm32_str, 0, 0);
 
     cout << "machine code: ";
     cout << hex << 0xb8 + reg_val;
