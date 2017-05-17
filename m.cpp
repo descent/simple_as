@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <map>
 
+#include "mytype.h"
+
 using namespace std;
 
 typedef vector<string> Line;
@@ -15,6 +17,9 @@ void usage(const char *cmd)
   cout << cmd << endl;
   cout << cmd << " file_name (ex.s)" << endl;
 }
+
+ofstream ofs("r.o");
+FILE *fs;
 
 string trim_inst_size(const string &s)
 {
@@ -33,15 +38,146 @@ string trim(const string &s)
 
 typedef int (*Fp)(const Line &l);
 
-int mov_fp(const Line &l)
+#define UNKNOWN  0x00000000
+#define R32      0x00000001
+#define IMM32    0x00000002
+
+int check_operand_type(const string &str)
 {
+  if ('%' == str[0]) // current only support 32 register
+    return R32;
+  if ('$' == str[0]) // current only support imm32
+    return IMM32;
+  return UNKNOWN;
+}
+
+int reg_to_val(const string &str)
+{
+  string lower_str;
+  for (auto &c : str)
+  {
+    lower_str.push_back(tolower(c));
+  }
+
+  static map<string, int> reg_table
+                   {
+                     {"eax", 0},
+                     {"ecx", 1},
+                     {"edx", 2},
+                     {"ebx", 3},
+                     {"esp", 4},
+                     {"ebp", 5},
+                     {"esi", 6},
+                     {"edi", 7}
+                   };
+
+  auto it = reg_table.find(lower_str);
+  if (it != reg_table.end())
+  {
+    return it->second;
+  }
+  else
+  {
+    return -1;
+  }
+}
+
+
+// ref: http://x86.renejeschke.de/html/file_module_x86_id_5.html
+int add_func(const Line &l)
+{
+  int op1_type;
+  int op2_type;
+
+  cout << "handle add" << endl;
+
+  if (l.size() != 3)
+  {
+    cout << "syntax error" << endl;
+  }
+
+  op1_type = check_operand_type(l[1]);
+  op2_type = check_operand_type(l[2]);
+
+  cout << l[1] << " op type: " << op1_type << endl;
+  cout << l[2] << " op type: " << op2_type << endl;
+
+  if ((op1_type | op2_type) == 0x3)
+  {
+    cout << "handle r, imm8" << endl;
+    int reg_val = reg_to_val(l[2].substr(1));
+
+    string imm32_str = l[1].substr(1);
+    int imm32_num = std::stoi(imm32_str);
+
+    u8 mod_rm = 0xc0 | reg_val;
+    u8 op = 0x83;
+
+    cout << "machine code: ";
+    cout << hex << op;
+    cout << imm32_num << endl;
+    cout << dec;
+
+    #if 0
+    ofs << hex << 0xb8 + reg_val;
+    ofs << imm32_num << endl;
+    ofs << dec;
+    #endif
+
+    fwrite(&op, 1, 1, fs);
+    fwrite(&mod_rm, 1, 1, fs);
+    fwrite(&imm32_num, 1, 4, fs);
+  }
+  return 0;
+}
+
+// b8 +rd r32, imm32
+int mov_func(const Line &l)
+{
+  int op1_type;
+  int op2_type;
+
   cout << "handle mov" << endl;
 
   if (l.size() != 3)
   {
     cout << "syntax error" << endl;
   }
-  
+
+  op1_type = check_operand_type(l[1]);
+  op2_type = check_operand_type(l[2]);
+
+  cout << l[1] << " op type: " << op1_type << endl;
+  cout << l[2] << " op type: " << op2_type << endl;
+
+
+
+  if ((op1_type | op2_type) == 0x3)
+  {
+    cout << "handle R32, IMM32" << endl;
+    int reg_val = reg_to_val(l[2].substr(1));
+
+    string imm32_str = l[1].substr(1);
+    int imm32_num = std::stoi(imm32_str);
+
+    cout << "machine code: ";
+    cout << hex << 0xb8 + reg_val;
+    cout << imm32_num << endl;
+    cout << dec;
+
+    u8 op = 0xb8 + reg_val;
+    #if 0
+    ofs << hex << 0xb8 + reg_val;
+    ofs << imm32_num << endl;
+    ofs << dec;
+    #endif
+
+    fwrite(&op, 1, 1, fs);
+    fwrite(&imm32_num, 1, 4, fs);
+  }
+
+
+
   for (auto &i : l)
   {
     cout << i << endl;
@@ -59,7 +195,13 @@ void gen_obj(const vector<Line> &tokens)
   {
     string inst = trim_inst_size(line[0]);
 
-    auto it = obj_handle.find(inst);
+    string lower_str; 
+    for (auto &c : inst)
+    { 
+      lower_str.push_back(tolower(c));
+    }
+    cout << "lower_str: " << lower_str << endl;
+    auto it = obj_handle.find(lower_str);
     Fp fp;
     if (it != obj_handle.end())
     {
@@ -81,9 +223,22 @@ int main(int argc, char *argv[])
     usage(argv[0]);
     return 5;
   }
-  obj_handle.insert({"mov", mov_fp});
+
+  obj_handle.insert({"mov", mov_func});
+  obj_handle.insert({"add", add_func});
+
+  char *pos = strrchr(argv[1], '.');
+  string obj_fn;
+  if (pos)
+  {
+    obj_fn = string{&argv[1][0], pos+1};
+    obj_fn.push_back('o');
+  }
 
   ifstream ifs(argv[1]);
+  cout << "open obj_fn: " << obj_fn << endl;
+
+  fs = fopen(obj_fn.c_str(), "wb");
 
   vector<string> lines;  
   string str;
@@ -149,6 +304,9 @@ int main(int argc, char *argv[])
   }
 
   gen_obj(tokens);
+
+  fclose(fs);
+  cout << "write obj_fn: " << obj_fn << endl;
 
   return 0;
 }
