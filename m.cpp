@@ -210,6 +210,20 @@ int mov_func(const Line &l)
   return 0;
 }
 
+int leave_func(const Line &l)
+{
+  cout << "handle leave" << endl;
+
+  if (l.size() != 1)
+  {
+    cout << "syntax error" << endl;
+  }
+
+  u8 op=0xc9;
+  fwrite(&op, 1, 1, fs);
+  return 0;
+}
+
 map<string, Fp> obj_handle;
 
 
@@ -251,6 +265,7 @@ int main(int argc, char *argv[])
 
   obj_handle.insert({"mov", mov_func});
   obj_handle.insert({"add", add_func});
+  obj_handle.insert({"leave", leave_func});
 
   char *pos = strrchr(argv[1], '.');
   string obj_fn;
