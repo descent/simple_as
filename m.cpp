@@ -162,6 +162,9 @@ int add_func(const Line &l)
   return 0;
 }
 
+// ref: http://x86.renejeschke.de/html/file_module_x86_id_308.html
+// intel manual vol 2: 2a 2-6
+// Intel® 64 and IA-32 Architectures Software Developer’s Manual Volume 2 (2A, 2B, 2C & 2D): Instruction Set Reference, A-Z
 int sub_func(const Line &l)
 {
   int op1_type;
@@ -181,18 +184,17 @@ int sub_func(const Line &l)
   cout << l[2] << " op type: " << op2_type << endl;
 
   u8 mod_rm=0xe8;
-  u8 rm;
   if ((op1_type | op2_type) == 0x3)
   { // subl $2, %esp
     cout << "handle r, imm8" << endl;
     int reg_val = reg_to_val(l[2].substr(1));
     cout << "  reg_val: " << reg_val << endl;
-    if (4 == reg_val) 
+
+    if (-1 != reg_val) 
     {
-      rm = 4;
+      mod_rm |= reg_val;
     }
 
-    mod_rm |= rm;
     cout << "\tmod_rm: " << hex << (u32)mod_rm << dec << endl;
 
     //string imm_str = string{"$0xf"}.substr(1);
