@@ -41,11 +41,17 @@ typedef int (*Fp)(const Line &l);
 #define UNKNOWN  0x00000000
 #define R32      0x00000001
 #define IMM32    0x00000002
+#define R16      0x00000004
 
 int check_operand_type(const string &str)
 {
   if ('%' == str[0]) // current only support 32 register
-    return R32;
+  {
+    if (str.length() == 4) // %eax
+      return R32;
+    else // %ax
+      return R16;
+  }
   if ('$' == str[0]) // current only support imm32
     return IMM32;
   return UNKNOWN;
@@ -176,6 +182,19 @@ int mov_func(const Line &l)
   cout << l[2] << " op type: " << op2_type << endl;
 
 
+  u8 op = 0x89;
+  u8 mod_rm = 0xc0;
+  if ((op1_type | op2_type) == 0x1)
+  {
+    // mov %esp, %ebp
+    int reg_val_1 = reg_to_val(l[1].substr(1)); // %esp << 3
+    int reg_val_2 = reg_to_val(l[2].substr(1)); // %ebp
+
+    mod_rm |= (reg_val_1 << 3);
+    mod_rm |= reg_val_2;
+    fwrite(&op, 1, 1, fs);
+    fwrite(&mod_rm, 1, 1, fs);
+  }
 
   if ((op1_type | op2_type) == 0x3)
   {
@@ -190,7 +209,7 @@ int mov_func(const Line &l)
     cout << imm32_num << endl;
     cout << dec;
 
-    u8 op = 0xb8 + reg_val;
+    op = 0xb8 + reg_val;
     #if 0
     ofs << hex << 0xb8 + reg_val;
     ofs << imm32_num << endl;
@@ -221,6 +240,61 @@ int leave_func(const Line &l)
 
   u8 op=0xc9;
   fwrite(&op, 1, 1, fs);
+  return 0;
+}
+
+int push_func(const Line &l)
+{
+  cout << "handle push" << endl;
+
+  if (l.size() != 2)
+  {
+    cout << "syntax error" << endl;
+  }
+
+  int op1_type = check_operand_type(l[1]);
+  u8 op=0x50;
+  int reg_val = reg_to_val(l[1].substr(1));
+
+  if (op1_type == R32 || op1_type == R16)
+  {
+    op = 0x50 + reg_val;
+    fwrite(&op, 1, 1, fs);
+  }
+
+  return 0;
+}
+
+int ret_func(const Line &l)
+{
+  cout << "\thandle ret" << endl;
+
+  if (l.size() > 2 || l.size() <= 0)
+  {
+    cout << "syntax error" << endl;
+  }
+
+  u8 op=0xc3; // 0xc3: Near return to calling procedure. or 0xcb: Far return to calling procedure.
+  if (l.size() == 1)
+  {
+    fwrite(&op, 1, 1, fs);
+  }
+
+  if (l.size() == 2)
+  {
+  #if 0
+  int op1_type = check_operand_type(l[1]);
+  int reg_val = reg_to_val(l[1].substr(1));
+
+  if (op1_type == R32 || op1_type == R16)
+  {
+    op = 0x50 + reg_val;
+  }
+  #endif
+  }
+
+
+
   return 0;
 }
 
@@ -266,6 +340,8 @@ int main(int argc, char *argv[])
   obj_handle.insert({"mov", mov_func});
   obj_handle.insert({"add", add_func});
   obj_handle.insert({"leave", leave_func});
+  obj_handle.insert({"push", push_func});
+  obj_handle.insert({"ret", ret_func});
 
   char *pos = strrchr(argv[1], '.');
   string obj_fn;
