@@ -18,6 +18,15 @@ void usage(const char *cmd)
   cout << cmd << " file_name (ex.s)" << endl;
 }
 
+bool is_label(const string &label)
+{
+  auto rit = label.rbegin();
+  if (':' == *rit)
+    return true;
+  else
+    return false;
+}
+
 ofstream ofs("r.o");
 FILE *fs;
 
@@ -233,6 +242,30 @@ int sub_func(const Line &l)
   return 0;
 }
 
+int gas_text_func(const Line &l)
+{
+  cout << "handle .text: " << l[0] << endl;
+  return 0;
+}
+
+int gas_global_func(const Line &l)
+{
+  cout << "handle .global: " << l[0] << endl;
+  return 0;
+}
+
+int label_func(const Line &l)
+{
+  cout << "handle label: " << l[0] << endl;
+  return 0;
+}
+
+int gas_type_func(const Line &l)
+{
+  cout << "handle .type" << l[0] << endl;
+  return 0;
+}
+
 // b8 +rd r32, imm32
 int mov_func(const Line &l)
 {
@@ -377,7 +410,14 @@ void gen_obj(const vector<Line> &tokens)
 {
   for (auto &line : tokens)
   {
-    string inst = trim_inst_size(line[0]);
+    string inst = line[0];
+    if ('.' == line[0][0]) // pseudo inst
+    {
+    }
+    else
+    {
+      inst = trim_inst_size(line[0]);
+    }
 
     string lower_str; 
     for (auto &c : inst)
@@ -392,10 +432,14 @@ void gen_obj(const vector<Line> &tokens)
       fp = it->second;
       (*fp)(line);
     }
-    else
-    {
-      cout << inst << " found no handle" << endl;
-    }
+    else if (is_label(line[0]))
+         {
+           label_func(line);
+         }
+         else
+         {
+           cout << inst << " found no handle" << endl;
+         }
   }
 }
 
@@ -414,6 +458,9 @@ int main(int argc, char *argv[])
   obj_handle.insert({"leave", leave_func});
   obj_handle.insert({"push", push_func});
   obj_handle.insert({"ret", ret_func});
+  obj_handle.insert({".text", gas_text_func});
+  obj_handle.insert({".global", gas_global_func});
+  obj_handle.insert({".type", gas_type_func});
 
   char *pos = strrchr(argv[1], '.');
   string obj_fn;
