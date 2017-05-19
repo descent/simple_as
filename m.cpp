@@ -10,6 +10,37 @@
 
 using namespace std;
 
+//enum Section {TEXT, DATA, BSS, UNKNOWN_SECTION};
+
+Section cur_section = UNKNOWN_SECTION;
+u32 section_len[UNKNOWN_SECTION];
+
+void section_len_print()
+{
+  const char *type_str[] =
+  {
+    FOREACH_FRUIT(GENERATE_STRING)
+  };
+
+  for (int i=0 ; i < UNKNOWN_SECTION ; ++i)
+  {
+    cout << "section_len[" << type_str[i] << "]: " << section_len[i] << endl;
+  }
+}
+
+int section_len_add(u32 len)
+{
+  if ((TEXT <= cur_section) && (cur_section < UNKNOWN_SECTION))
+  {
+    section_len[cur_section] += len;
+  }
+  else
+  {
+    return ERR;
+  }
+  return OK;
+}
+
 typedef vector<string> Line;
 
 void usage(const char *cmd)
@@ -101,6 +132,7 @@ int reg_to_val(const string &str)
 // ref: http://x86.renejeschke.de/html/file_module_x86_id_5.html
 int add_func(const Line &l)
 {
+  int gen_len = -1; // generate how many machine code byte
   int op1_type;
   int op2_type;
 
@@ -167,8 +199,9 @@ int add_func(const Line &l)
     fwrite(&op, 1, 1, fs);
     fwrite(&mod_rm, 1, 1, fs);
     fwrite(&imm_num, 1, imm_size, fs);
+    gen_len = imm_size + 2;
   }
-  return 0;
+  return gen_len;
 }
 
 // ref: http://x86.renejeschke.de/html/file_module_x86_id_308.html
@@ -176,6 +209,7 @@ int add_func(const Line &l)
 // Intel® 64 and IA-32 Architectures Software Developer’s Manual Volume 2 (2A, 2B, 2C & 2D): Instruction Set Reference, A-Z
 int sub_func(const Line &l)
 {
+  int gen_len = -1; // generate how many machine code byte
   int op1_type;
   int op2_type;
 
@@ -238,13 +272,15 @@ int sub_func(const Line &l)
     fwrite(&op, 1, 1, fs);
     fwrite(&mod_rm, 1, 1, fs);
     fwrite(&imm_num, 1, imm_size, fs);
+    gen_len = imm_size + 2;
   }
-  return 0;
+  return gen_len;
 }
 
 int gas_text_func(const Line &l)
 {
   cout << "handle .text: " << l[0] << endl;
+  cur_section = TEXT;
   return 0;
 }
 
@@ -271,6 +307,7 @@ int mov_func(const Line &l)
 {
   int op1_type;
   int op2_type;
+  int gen_len = -1; // generate how many machine code byte
 
   cout << "handle mov" << endl;
 
@@ -285,7 +322,6 @@ int mov_func(const Line &l)
   cout << l[1] << " op type: " << op1_type << endl;
   cout << l[2] << " op type: " << op2_type << endl;
 
-
   u8 op = 0x89;
   u8 mod_rm = 0xc0;
   if ((op1_type | op2_type) == 0x1)
@@ -298,6 +334,7 @@ int mov_func(const Line &l)
     mod_rm |= reg_val_2;
     fwrite(&op, 1, 1, fs);
     fwrite(&mod_rm, 1, 1, fs);
+    gen_len = 2;
   }
 
   if ((op1_type | op2_type) == 0x3)
@@ -322,6 +359,7 @@ int mov_func(const Line &l)
 
     fwrite(&op, 1, 1, fs);
     fwrite(&imm32_num, 1, 4, fs);
+    gen_len = 5;
   }
 
 
@@ -330,7 +368,7 @@ int mov_func(const Line &l)
   {
     cout << i << endl;
   }
-  return 0;
+  return gen_len;
 }
 
 int leave_func(const Line &l)
@@ -344,11 +382,13 @@ int leave_func(const Line &l)
 
   u8 op=0xc9;
   fwrite(&op, 1, 1, fs);
-  return 0;
+  return 1;
 }
 
 int push_func(const Line &l)
 {
+  int gen_len = -1; // generate how many machine code byte
+
   cout << "handle push" << endl;
 
   if (l.size() != 2)
@@ -364,13 +404,15 @@ int push_func(const Line &l)
   {
     op = 0x50 + reg_val;
     fwrite(&op, 1, 1, fs);
+    gen_len = 1;
   }
 
-  return 0;
+  return gen_len;
 }
 
 int ret_func(const Line &l)
 {
+  int gen_len = -1; // generate how many machine code byte
   cout << "\thandle ret" << endl;
 
   if (l.size() > 2 || l.size() <= 0)
@@ -382,6 +424,7 @@ int ret_func(const Line &l)
   if (l.size() == 1)
   {
     fwrite(&op, 1, 1, fs);
+    gen_len = 1;
   }
 
   if (l.size() == 2)
@@ -399,7 +442,7 @@ int ret_func(const Line &l)
 
 
 
-  return 0;
+  return gen_len;
 }
 
 map<string, Fp> obj_handle;
@@ -429,8 +472,17 @@ void gen_obj(const vector<Line> &tokens)
     Fp fp;
     if (it != obj_handle.end())
     {
+      int result;
       fp = it->second;
-      (*fp)(line);
+      result = (*fp)(line);
+      if (result != -1)
+      {
+        section_len_add(result);
+      }
+      else
+      {
+        cout << "handle error" << endl;
+      }
     }
     else if (is_label(line[0]))
          {
@@ -542,6 +594,7 @@ int main(int argc, char *argv[])
 
   fclose(fs);
   cout << "write obj_fn: " << obj_fn << endl;
+  section_len_print();
 
   return 0;
 }
