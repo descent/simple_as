@@ -7,6 +7,7 @@
 #include <map>
 
 #include "mytype.h"
+#include "section.h"
 
 using namespace std;
 
@@ -15,13 +16,16 @@ using namespace std;
 Section cur_section = UNKNOWN_SECTION;
 u32 section_len[UNKNOWN_SECTION];
 
+ElfSection *cur_elf_section;
+
 void section_len_print()
 {
+#if 0
   const char *type_str[] =
   {
     FOREACH_FRUIT(GENERATE_STRING)
   };
-
+#endif
   for (int i=0 ; i < UNKNOWN_SECTION ; ++i)
   {
     cout << "section_len[" << type_str[i] << "]: " << section_len[i] << endl;
@@ -197,8 +201,11 @@ int add_func(const Line &l)
     #endif
 
     fwrite(&op, 1, 1, fs);
+    cur_elf_section->write(&op, 1);
     fwrite(&mod_rm, 1, 1, fs);
+    cur_elf_section->write(&mod_rm, 1);
     fwrite(&imm_num, 1, imm_size, fs);
+    cur_elf_section->write((u8 *)&imm_num, imm_size);
     gen_len = imm_size + 2;
   }
   return gen_len;
@@ -270,17 +277,32 @@ int sub_func(const Line &l)
          }
 
     fwrite(&op, 1, 1, fs);
+    cur_elf_section->write(&op, 1);
     fwrite(&mod_rm, 1, 1, fs);
+    cur_elf_section->write(&mod_rm, 1);
     fwrite(&imm_num, 1, imm_size, fs);
+    cur_elf_section->write((u8 *)&imm_num, imm_size);
     gen_len = imm_size + 2;
   }
   return gen_len;
+}
+
+int gas_section_func(const Line &l)
+{
+  cout << "handle .section: " << l[0] << endl;
+  cur_elf_section = get_section(l[1]);
+  cout << "xx sec name: ";
+  cur_elf_section->print_sec_name();
+  return 0;
 }
 
 int gas_text_func(const Line &l)
 {
   cout << "handle .text: " << l[0] << endl;
   cur_section = TEXT;
+  cur_elf_section = get_section(l[0]);
+  cout << "xx sec name: ";
+  cur_elf_section->print_sec_name();
   return 0;
 }
 
@@ -305,6 +327,8 @@ int gas_type_func(const Line &l)
 // b8 +rd r32, imm32
 int mov_func(const Line &l)
 {
+  vector<u8> machine_code;
+
   int op1_type;
   int op2_type;
   int gen_len = -1; // generate how many machine code byte
@@ -333,7 +357,9 @@ int mov_func(const Line &l)
     mod_rm |= (reg_val_1 << 3);
     mod_rm |= reg_val_2;
     fwrite(&op, 1, 1, fs);
+    cur_elf_section->write(&op, 1);
     fwrite(&mod_rm, 1, 1, fs);
+    cur_elf_section->write(&mod_rm, 1);
     gen_len = 2;
   }
 
@@ -358,7 +384,9 @@ int mov_func(const Line &l)
     #endif
 
     fwrite(&op, 1, 1, fs);
+    cur_elf_section->write(&op, 1);
     fwrite(&imm32_num, 1, 4, fs);
+    cur_elf_section->write((u8 *)&imm32_num, 4);
     gen_len = 5;
   }
 
@@ -382,6 +410,7 @@ int leave_func(const Line &l)
 
   u8 op=0xc9;
   fwrite(&op, 1, 1, fs);
+  cur_elf_section->write(&op, 1);
   return 1;
 }
 
@@ -404,6 +433,7 @@ int push_func(const Line &l)
   {
     op = 0x50 + reg_val;
     fwrite(&op, 1, 1, fs);
+    cur_elf_section->write(&op, 1);
     gen_len = 1;
   }
 
@@ -424,6 +454,7 @@ int ret_func(const Line &l)
   if (l.size() == 1)
   {
     fwrite(&op, 1, 1, fs);
+    cur_elf_section->write(&op, 1);
     gen_len = 1;
   }
 
@@ -513,6 +544,7 @@ int main(int argc, char *argv[])
   obj_handle.insert({".text", gas_text_func});
   obj_handle.insert({".global", gas_global_func});
   obj_handle.insert({".type", gas_type_func});
+  obj_handle.insert({".section", gas_section_func});
 
   char *pos = strrchr(argv[1], '.');
   string obj_fn;
@@ -594,7 +626,8 @@ int main(int argc, char *argv[])
 
   fclose(fs);
   cout << "write obj_fn: " << obj_fn << endl;
-  section_len_print();
+  //section_len_print();
+  dump_section();
 
   return 0;
 }
