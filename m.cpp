@@ -13,37 +13,7 @@ using namespace std;
 
 //enum Section {TEXT, DATA, BSS, UNKNOWN_SECTION};
 
-Section cur_section = UNKNOWN_SECTION;
-u32 section_len[UNKNOWN_SECTION];
-
 ElfSection *cur_elf_section;
-
-void section_len_print()
-{
-#if 0
-  const char *type_str[] =
-  {
-    FOREACH_FRUIT(GENERATE_STRING)
-  };
-#endif
-  for (int i=0 ; i < UNKNOWN_SECTION ; ++i)
-  {
-    cout << "section_len[" << type_str[i] << "]: " << section_len[i] << endl;
-  }
-}
-
-int section_len_add(u32 len)
-{
-  if ((TEXT <= cur_section) && (cur_section < UNKNOWN_SECTION))
-  {
-    section_len[cur_section] += len;
-  }
-  else
-  {
-    return ERR;
-  }
-  return OK;
-}
 
 typedef vector<string> Line;
 
@@ -299,7 +269,6 @@ int gas_section_func(const Line &l)
 int gas_text_func(const Line &l)
 {
   cout << "handle .text: " << l[0] << endl;
-  cur_section = TEXT;
   cur_elf_section = get_section(l[0]);
   cout << "xx sec name: ";
   cur_elf_section->print_sec_name();
@@ -508,7 +477,6 @@ void gen_obj(const vector<Line> &tokens)
       result = (*fp)(line);
       if (result != -1)
       {
-        section_len_add(result);
       }
       else
       {
@@ -626,7 +594,6 @@ int main(int argc, char *argv[])
 
   fclose(fs);
   cout << "write obj_fn: " << obj_fn << endl;
-  //section_len_print();
   dump_section();
 
   write_section_to_file(obj_fn);
