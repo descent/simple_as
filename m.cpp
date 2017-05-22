@@ -62,7 +62,7 @@ bool is_label(const string &label)
     return false;
 }
 
-ofstream ofs("r.o");
+//ofstream ofs("r.o");
 FILE *fs;
 
 string trim_inst_size(const string &s)
@@ -557,7 +557,7 @@ int main(int argc, char *argv[])
   ifstream ifs(argv[1]);
   cout << "open obj_fn: " << obj_fn << endl;
 
-  fs = fopen(obj_fn.c_str(), "wb");
+  fs = fopen("/tmp/tt.o", "wb");
 
   vector<string> lines;  
   string str;
@@ -629,5 +629,6 @@ int main(int argc, char *argv[])
   //section_len_print();
   dump_section();
 
+  write_section_to_file(obj_fn);
   return 0;
 }
