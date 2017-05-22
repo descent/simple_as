@@ -43,6 +43,7 @@ class ElfSection
     void print()
     {
       int idx=0;
+      cout << "section name: " << sec_name_ << endl; 
       cout << "len_: " << data_.size() << endl; // can use cout??
       for (auto &i : data_)
       {
@@ -57,6 +58,14 @@ class ElfSection
     {
       cout << sec_name_ << endl;
     }
+    const u8 *data() const
+    {
+      return &data_[0];
+    }
+    auto length() const
+    {
+      return data_.size();
+    }
   private:
     u32 len_;
     vector<u8> data_;
@@ -65,5 +74,6 @@ class ElfSection
 
 ElfSection *get_section(const string &section_name);
 void dump_section();
+int write_section_to_file(const string &fn);
 
 #endif
