@@ -18,7 +18,7 @@ endif
 
 CXX=g++
 
-OBJS = m.o
+OBJS = m.o section.o
 
 #all: 
 #	make DLEXER=1 lexer
