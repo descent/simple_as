@@ -260,9 +260,18 @@ int sub_func(const Line &l)
 int gas_section_func(const Line &l)
 {
   cout << "handle .section: " << l[0] << endl;
-  cur_elf_section = get_section(l[1]);
+
+  // remove ^" 
+  // remove "$
+  regex re("^\"|\"$");
+  string str = regex_replace(l[1], re, "");
+
+  cur_elf_section = get_section(str);
   cout << "xx sec name: ";
   cur_elf_section->print_sec_name();
+
+
+  //section_string.insert(str);
   return 0;
 }
 
