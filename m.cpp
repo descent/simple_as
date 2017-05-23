@@ -292,7 +292,26 @@ int gas_global_func(const Line &l)
 
 int label_func(const Line &l)
 {
+  Elf32Sym symbol{0};
+  symbol.st_name = 1;
+  symbol.st_shndx = 4;
+  symbol.st_info = 0x12;
+
+  ElfSection *section = get_section(".symtab");
+
+  section->write((const u8 *)&symbol, sizeof(Elf32Sym));
+
   cout << "handle label: " << l[0] << endl;
+
+  regex re(":$");
+  string str = regex_replace(l[0], re, "");
+
+  auto ret = elf_string.insert(str);
+  if (ret.second == false)
+  {
+    cout << "symbol '" << str << "' is already defined" << endl;
+    exit(1);
+  }
   return 0;
 }
 
