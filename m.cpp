@@ -281,6 +281,7 @@ int gas_text_func(const Line &l)
   cur_elf_section = get_section(l[0]);
   cout << "xx sec name: ";
   cur_elf_section->print_sec_name();
+  //section_string.insert(".text");
   return 0;
 }
 
@@ -622,8 +623,16 @@ int main(int argc, char *argv[])
 
   fclose(fs);
   cout << "write obj_fn: " << obj_fn << endl;
-  dump_section();
+
+#if 0
+  for (auto &i : section_string)
+  {
+    cout << "section string: " << i << endl;
+  }
+#endif
 
   write_section_to_file(obj_fn);
+
+  dump_section();
   return 0;
 }
