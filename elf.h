@@ -23,6 +23,10 @@ along with this program.  If not, see http://www.gnu.org/licenses/.
 
 #include "mytype.h"
 
+#include <string>
+
+using namespace std;
+
 typedef unsigned int elf32_addr;
 typedef unsigned int elf32_word;
 typedef signed int elf32_sword;
@@ -144,14 +148,40 @@ typedef struct {
   elf32_word    r_info;
 } Elf32Rel;
 
+#define ELF32_ST_BIND(i) ((i)>>4)
+#define ELF32_ST_TYPE(i) ((i)&0xf)
+#define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
 
-typedef struct {
+// symbol binding
+#define STB_LOCAL     0
+#define STB_GLOBAL    1
+#define STB_WEAK      2
+#define STB_LOPROC    13
+#define STB_HIPROC    15
+
+// symbol type
+#define STT_NOTYPE    0
+#define STT_OBJECT    1
+#define STT_FUNC      2
+#define STT_SECTION   3
+#define STT_FILE      4
+#define STT_LOPROC    13
+#define STT_HIPROC    15
+
+struct Symbol
+{
   elf32_word    st_name;
   elf32_addr    st_value;
   elf32_word    st_size;
   u8 st_info;
   u8 st_other;
   elf32_half st_shndx;
+};
+
+typedef struct {
+  Symbol symbol;
+  string which_section_;
+  string symbol_str_;
 } Elf32Sym;
 
 #endif
