@@ -31,6 +31,7 @@ enum Section
 };
 
 
+extern map<string, Elf32Sym> elf_symbol;
 extern set<string> elf_string;
 //extern const char *type_str[];
 
@@ -98,6 +99,7 @@ class ElfSection
 };
 
 ElfSection *get_section(const string &section_name);
+Elf32Sym *get_symbol(const string &symbol_name);
 void dump_section();
 int write_section_to_file(const string &fn);
 

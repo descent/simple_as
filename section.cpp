@@ -33,6 +33,7 @@ Hex dump of section '.shstrtab':
 //set<string> section_string{".shstrtab"};
 set<string> section_string;
 set<string> elf_string;
+map<string, Elf32Sym> elf_symbol;
 
 namespace
 {
@@ -41,18 +42,27 @@ namespace
 
 int write_section_to_file(const string &fn)
 {
+  ElfSection *symbol_section = get_section(".symtab");
+
+  cout << "zz symbol_section->length(): " << symbol_section->length() << endl;
+
   get_section("");
   u8 null_char = '\0';
 
+  map<string, u32> str_to_index; // .strtab section index
   {
+    u32 str_index = 1;
 
-  ElfSection *section = get_section(".strtab");
-  section->write(&null_char, 1);
-  for (auto &i : elf_string)
-  {
-    section->write((const u8*)i.c_str(), i.length());
+    ElfSection *section = get_section(".strtab");
     section->write(&null_char, 1);
-  }
+    for (auto &i : elf_string)
+    {
+      section->write((const u8*)i.c_str(), i.length());
+      section->write(&null_char, 1);
+
+      str_to_index.insert({i, str_index});
+      str_index += i.length() + 1;
+    }
 
   }
 
@@ -71,6 +81,41 @@ int write_section_to_file(const string &fn)
     section->write(&null_char, 1);
     sec_name_index += i.length() + 1;
   }
+
+  u32 sec_index=0;
+  map<string, u32> sec_to_index;
+  for(auto &i : sections)
+  {
+    sec_to_index.insert({i.second.sec_name(), sec_index}); 
+    ++sec_index;
+  }
+
+  for(auto &i : sec_to_index)
+  {
+    cout << i.first << ", " << i.second << endl;
+  }
+
+#if 1
+  for(auto &i : elf_symbol)
+  {
+    Elf32Sym symbol = i.second;
+    symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
+    symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+
+
+    //symbol.symbol.st_info = 0;
+    cout << "rr symbol.symbol.st_info: " << (u32)symbol.symbol.st_info << endl;
+
+    symbol_section->write((const u8 *)&symbol.symbol, sizeof(Symbol));
+    //cout << "  symbol.st_name: " << symbol.st_name << endl;
+  }
+#endif
+
+  // note ref: elf document 1-13, should greate last local symbol index
+  symbol_section->section_header_.sh_info = elf_symbol.size()+2; // work around
+  //symbol_section->section_header_.sh_info = 100;
+
+  //symbol_section = get_section(".symtab");
 
 
   FILE *fs;
@@ -128,7 +173,7 @@ int write_section_to_file(const string &fn)
   // write section content to a file
   for(auto &i : sections)
   {
-    //cout << "section name: " << i.first << endl;
+    cout << "write section name: " << i.first << "size: " << i.second.length() << endl;
     auto buf = i.second.data();
     fwrite(buf, 1, i.second.length(), fs);
   }
@@ -142,6 +187,22 @@ void dump_section()
   {
     //cout << "section name: " << i.first << endl;
     i.second.print();
+  }
+}
+
+Elf32Sym *get_symbol(const string &symbol_name)
+{
+  auto it = elf_symbol.find(symbol_name);
+  if (it == elf_symbol.end()) // not found
+  {
+    Elf32Sym symbol{0};
+    elf_symbol.insert({symbol_name, symbol});
+    it = elf_symbol.find(symbol_name);
+    return &(it->second);
+  }
+  else
+  {
+    return &(it->second);
   }
 }
 
@@ -233,7 +294,7 @@ int ElfSection::init_shstrtab_section()
 int ElfSection::init_symtab_section()
 {
   Elf32Sym symbol{0};
-  write((const u8 *)&symbol, sizeof(Elf32Sym));
+  write((const u8 *)&symbol.symbol, sizeof(Symbol));
 
   section_header_.sh_type = 2;
   section_header_.sh_flags = 0;
@@ -241,7 +302,7 @@ int ElfSection::init_symtab_section()
   //section_header_.sh_offset = cur_pos + offset;
   //section_header_.sh_size = i.second.length();
   section_header_.sh_link = 2; // note ref: elf document 1-13
-  section_header_.sh_info = 1; // note ref: elf document 1-13
+  section_header_.sh_info = 0; // note ref: elf document 1-13, should greate last local symbol index
   section_header_.sh_addralign = 0;
   section_header_.sh_entsize = sizeof(Elf32Sym);
 
