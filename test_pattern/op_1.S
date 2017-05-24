@@ -1,9 +1,8 @@
 
-  mov a, 2 
         
 .text
                 
-.globl main
+.global main
   .type main, @function
 main:
 pushl %ebp
