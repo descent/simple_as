@@ -288,20 +288,17 @@ int gas_text_func(const Line &l)
 int gas_global_func(const Line &l)
 {
   cout << "handle .global: " << l[0] << endl;
+  Elf32Sym *symbol = get_symbol(l[1]);
+
+  u8 b = STB_GLOBAL;
+  u8 t = 0;
+  symbol->symbol.st_info |= ELF32_ST_INFO(b, t);
+  cout << "gg symbol->symbol.st_info: " << (u32)symbol->symbol.st_info << endl;
   return 0;
 }
 
 int label_func(const Line &l)
 {
-  Elf32Sym symbol{0};
-  symbol.st_name = 1;
-  symbol.st_shndx = 4;
-  symbol.st_info = 0x12;
-
-  ElfSection *section = get_section(".symtab");
-
-  section->write((const u8 *)&symbol, sizeof(Elf32Sym));
-
   cout << "handle label: " << l[0] << endl;
 
   regex re(":$");
@@ -313,12 +310,28 @@ int label_func(const Line &l)
     cout << "symbol '" << str << "' is already defined" << endl;
     exit(1);
   }
+
+  Elf32Sym *symbol = get_symbol(str);
+
+  symbol->symbol_str_ = str;
+  symbol->which_section_ = cur_elf_section->sec_name();
+  //elf_symbol.insert({cur_elf_section->sec_name(), symbol});
+  //elf_symbol.insert({str, symbol});
+
   return 0;
 }
 
 int gas_type_func(const Line &l)
 {
   cout << "handle .type" << l[0] << endl;
+  Elf32Sym *symbol = get_symbol(l[1]);
+  if (l[2] == "@function")
+  {
+    u8 b = 0;
+    u8 t = STT_FUNC;
+    symbol->symbol.st_info |= ELF32_ST_INFO(b, t);
+    cout << "qq symbol->symbol.st_info: " << (u32)symbol->symbol.st_info << endl;
+  }
   return 0;
 }
 
