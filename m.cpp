@@ -482,6 +482,42 @@ int push_func(const Line &l)
   return gen_len;
 }
 
+int pop_func(const Line &l)
+{
+  int gen_len = -1; // generate how many machine code byte
+
+  cout << "handle push" << endl;
+
+  if (l.size() != 2)
+  {
+    cout << "syntax error" << endl;
+  }
+
+  int op1_type = check_operand_type(l[1]);
+  u8 op=0x58;
+  int reg_val = reg_to_val(l[1].substr(1));
+
+  if (op1_type == R32 || op1_type == R16)
+  {
+    op = 0x58 + reg_val;
+    fwrite(&op, 1, 1, fs);
+    cur_elf_section->write(&op, 1);
+    gen_len = 1;
+  }
+
+#if 0
+  if (op1_type == SYMBOL)
+  {
+    int imm32 = 0;
+    op = 0x68;
+    cur_elf_section->write(&op, 1);
+    cur_elf_section->write((u8*)&imm32, sizeof(imm32));
+    gen_len = 5;
+  }
+#endif
+  return gen_len;
+}
+
 int call_func(const Line &l)
 {
   int gen_len = -1; // generate how many machine code byte
@@ -597,6 +633,7 @@ int main(int argc, char *argv[])
   obj_handle.insert({"sub", sub_func});
   obj_handle.insert({"leave", leave_func});
   obj_handle.insert({"push", push_func});
+  obj_handle.insert({"pop", pop_func});
   obj_handle.insert({"call", call_func});
   obj_handle.insert({"ret", ret_func});
   obj_handle.insert({".text", gas_text_func});
