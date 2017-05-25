@@ -308,7 +308,7 @@ int ElfSection::init_symtab_section()
   section_header_.sh_link = 0; // note ref: elf document 1-13, need to set .strtab index
   section_header_.sh_info = 0; // note ref: elf document 1-13, should greate last local symbol index
   section_header_.sh_addralign = 0;
-  section_header_.sh_entsize = sizeof(Elf32Sym);
+  section_header_.sh_entsize = sizeof(Symbol);
 
 
 
