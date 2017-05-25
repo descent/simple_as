@@ -453,6 +453,22 @@ int push_func(const Line &l)
   return gen_len;
 }
 
+int call_func(const Line &l)
+{
+  int gen_len = -1; // generate how many machine code byte
+
+  cout << "handle call" << endl;
+
+  s32 rel32 = -4;
+  s8 op = 0xe8;
+  cur_elf_section->write((u8*)&op, 1);
+  cur_elf_section->write((u8*)&rel32, sizeof(rel32));
+
+  gen_len = 5;
+
+  return gen_len;
+}
+
 int ret_func(const Line &l)
 {
   int gen_len = -1; // generate how many machine code byte
@@ -552,6 +568,7 @@ int main(int argc, char *argv[])
   obj_handle.insert({"sub", sub_func});
   obj_handle.insert({"leave", leave_func});
   obj_handle.insert({"push", push_func});
+  obj_handle.insert({"call", call_func});
   obj_handle.insert({"ret", ret_func});
   obj_handle.insert({".text", gas_text_func});
   obj_handle.insert({".global", gas_global_func});
