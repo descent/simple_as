@@ -11,6 +11,18 @@
 
 using namespace std;
 
+bool is_num(const char *str)
+{
+  const char *p = str;
+  while (*p)
+  {
+    if (isdigit(*p) == 0)
+      return false;
+    ++p;
+  }
+  return true;
+}
+
 //enum Section {TEXT, DATA, BSS, UNKNOWN_SECTION};
 
 ElfSection *cur_elf_section;
@@ -58,6 +70,7 @@ typedef int (*Fp)(const Line &l);
 #define R32      0x00000001
 #define IMM32    0x00000002
 #define R16      0x00000004
+#define SYMBOL   0x00000008
 
 int check_operand_type(const string &str)
 {
@@ -69,7 +82,14 @@ int check_operand_type(const string &str)
       return R16;
   }
   if ('$' == str[0]) // current only support imm32
-    return IMM32;
+  {
+    const char *c_str = str.c_str();
+
+    if (is_num(c_str+1)) // c_str[0]: '$'
+      return IMM32;
+    else
+      return SYMBOL;
+  }
   return UNKNOWN;
 }
 
@@ -448,6 +468,15 @@ int push_func(const Line &l)
     fwrite(&op, 1, 1, fs);
     cur_elf_section->write(&op, 1);
     gen_len = 1;
+  }
+
+  if (op1_type == SYMBOL)
+  {
+    int imm32 = 0;
+    op = 0x68;
+    cur_elf_section->write(&op, 1);
+    cur_elf_section->write((u8*)&imm32, sizeof(imm32));
+    gen_len = 5;
   }
 
   return gen_len;
