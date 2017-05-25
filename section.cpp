@@ -60,6 +60,7 @@ int write_section_to_file(const string &fn)
       section->write((const u8*)i.c_str(), i.length());
       section->write(&null_char, 1);
 
+      // generate string, index pair
       str_to_index.insert({i, str_index});
       str_index += i.length() + 1;
     }
@@ -84,6 +85,8 @@ int write_section_to_file(const string &fn)
 
   u32 sec_index=0;
   map<string, u32> sec_to_index;
+
+  // generate section name, index pair
   for(auto &i : sections)
   {
     sec_to_index.insert({i.second.sec_name(), sec_index}); 
@@ -96,12 +99,13 @@ int write_section_to_file(const string &fn)
   }
 
 #if 1
+  symbol_section->section_header_.sh_link = sec_to_index[".strtab"];
+
   for(auto &i : elf_symbol)
   {
     Elf32Sym symbol = i.second;
     symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
     symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
-
 
     //symbol.symbol.st_info = 0;
     cout << "rr symbol.symbol.st_info: " << (u32)symbol.symbol.st_info << endl;
@@ -301,7 +305,7 @@ int ElfSection::init_symtab_section()
   section_header_.sh_addr = 0x0;
   //section_header_.sh_offset = cur_pos + offset;
   //section_header_.sh_size = i.second.length();
-  section_header_.sh_link = 2; // note ref: elf document 1-13
+  section_header_.sh_link = 0; // note ref: elf document 1-13, need to set .strtab index
   section_header_.sh_info = 0; // note ref: elf document 1-13, should greate last local symbol index
   section_header_.sh_addralign = 0;
   section_header_.sh_entsize = sizeof(Elf32Sym);
