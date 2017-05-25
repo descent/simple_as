@@ -297,6 +297,29 @@ int gas_section_func(const Line &l)
   return 0;
 }
 
+int gas_string_func(const Line &l)
+{
+  cout << "handle .string: " << l[0] << endl;
+#if 0
+  auto s4="\n";
+
+  auto pos = l[1].find(s4);
+  if (pos != string::npos )
+  {
+    l[1].replace(pos, 2, 1, 'o');
+  }
+#endif
+  auto data = l[1].c_str();
+
+  u8 ch=0;
+
+  cur_elf_section->write((u8*)data, l[1].length());
+  cout << "l[1].length(): " << l[1].length() << endl;
+  cur_elf_section->write(&ch, 1);
+
+  return 0;
+}
+
 int gas_text_func(const Line &l)
 {
   cout << "handle .text: " << l[0] << endl;
@@ -640,6 +663,7 @@ int main(int argc, char *argv[])
   obj_handle.insert({".global", gas_global_func});
   obj_handle.insert({".type", gas_type_func});
   obj_handle.insert({".section", gas_section_func});
+  obj_handle.insert({".string", gas_string_func});
 
   char *pos = strrchr(argv[1], '.');
   string obj_fn;
@@ -694,6 +718,42 @@ int main(int argc, char *argv[])
     sregex_token_iterator e;
 
     Line line{p, e};
+    if (line[0] == ".string")
+    {
+      regex match("\".*\"");
+      smatch m;
+      bool found = regex_search(i, m, match);
+      if (found)
+      {
+        line.clear();
+        line.push_back(".string");
+        for (auto &s: m)
+        {
+          string str{s};
+          //string str{"1+5=%d\\n"};
+
+          for (auto &c : str)
+          {
+            cout << "c: " << c << endl;
+          }
+
+          regex re("^\"|\"$");
+          string strip_str = regex_replace(str, re, "");
+          //string strip_str{str};
+          cout << "strip_str: " << strip_str << endl;
+          #if 1
+          regex re_newline(R"(\\n)");
+          const char replace_str[]={0x0a, 0};
+          string final_str = regex_replace(strip_str, re_newline, replace_str);
+          cout << "final_str: " << final_str << endl;
+          cout << "fin str len: " << final_str.length() << endl;
+
+          #endif
+
+          line.push_back(final_str);
+        }
+      }
+    }
 
     #if 0
     for_each(p, e, [](const smatch &m) 
