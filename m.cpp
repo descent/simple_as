@@ -37,6 +37,8 @@ FILE *fs;
 
 string trim_inst_size(const string &s)
 {
+  if (s == "call")
+    return s;
   regex re("[blw]$");
   string str = regex_replace(s, re, "");
   return str;
