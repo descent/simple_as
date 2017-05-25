@@ -138,7 +138,7 @@ int write_section_to_file(const string &fn)
   elf_header.e_ehsize = sizeof(Elf32Ehdr);               /* elf头部长度 */
   elf_header.e_phentsize = 0;            /* 程序头部中一个条目的长度 */
   elf_header.e_shentsize = sizeof(Elf32Shdr);            /* 节头部中一个条目的长度 */
-  elf_header.e_shstrndx = 1;
+  elf_header.e_shstrndx = sec_to_index[".shstrtab"];
   elf_header.e_shnum = sections.size();
   elf_header.e_phnum = 0;
 
@@ -177,7 +177,7 @@ int write_section_to_file(const string &fn)
   // write section content to a file
   for(auto &i : sections)
   {
-    cout << "write section name: " << i.first << "size: " << i.second.length() << endl;
+    cout << "write section name: " << i.first << ", size: " << i.second.length() << endl;
     auto buf = i.second.data();
     fwrite(buf, 1, i.second.length(), fs);
   }
