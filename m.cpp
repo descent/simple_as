@@ -74,6 +74,11 @@ typedef int (*Fp)(const Line &l);
 
 int check_operand_type(const string &str)
 {
+  regex re("^[a-zA-z]+[0-9_]*");
+  bool found = regex_match(str, re);
+  if (found)
+    return SYMBOL;
+
   if ('%' == str[0]) // current only support 32 register
   {
     if (str.length() == 4) // %eax
@@ -495,9 +500,17 @@ int push_func(const Line &l)
 
   if (op1_type == SYMBOL)
   {
+    Elf32Sym *sym = get_symbol(l[1]);
+
     int imm32 = 0;
     op = 0x68;
     cur_elf_section->write(&op, 1);
+    cout << cur_elf_section->sec_name() << " ## size: " << cur_elf_section->length() << endl;
+
+    sym->is_rel_ = true;
+    sym->which_section_ = cur_elf_section->sec_name();
+    sym->rel_.r_offset = cur_elf_section->length();
+    sym->rel_.r_info = ELF32_R_INFO(4, R_386_PC32);
     cur_elf_section->write((u8*)&imm32, sizeof(imm32));
     gen_len = 5;
   }
@@ -546,11 +559,18 @@ int call_func(const Line &l)
   int gen_len = -1; // generate how many machine code byte
 
   cout << "handle call" << endl;
+  int op1_type = check_operand_type(l[1]);
+
 
   s32 rel32 = -4;
   s8 op = 0xe8;
-  cur_elf_section->write((u8*)&op, 1);
-  cur_elf_section->write((u8*)&rel32, sizeof(rel32));
+
+  if (op1_type == SYMBOL)
+  {
+    cur_elf_section->write((u8*)&op, 1);
+    cout << cur_elf_section->sec_name() << " ## size: " << cur_elf_section->length() << endl;
+    cur_elf_section->write((u8*)&rel32, sizeof(rel32));
+  }
 
   gen_len = 5;
 
