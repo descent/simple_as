@@ -67,6 +67,19 @@ int write_section_to_file(const string &fn)
 
   }
 
+  for(auto &i : elf_symbol)
+  {
+#if 1
+    if (i.second.is_rel_ == true)
+    {
+      string rel_section_name = ".rel" + i.second.which_section_;
+      ElfSection *sec = get_section(rel_section_name);
+      sec->write((u8 *)&i.second.rel_, sizeof(i.second.rel_));
+    }
+#endif
+
+  }
+
   ElfSection *section = get_section(".shstrtab");
 
   u32 sec_name_index = 1;
@@ -104,6 +117,7 @@ int write_section_to_file(const string &fn)
   for(auto &i : elf_symbol)
   {
     Elf32Sym symbol = i.second;
+
     symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
     symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
 
@@ -200,6 +214,7 @@ Elf32Sym *get_symbol(const string &symbol_name)
   if (it == elf_symbol.end()) // not found
   {
     Elf32Sym symbol{0};
+    symbol.is_rel_ = false;
     elf_symbol.insert({symbol_name, symbol});
     it = elf_symbol.find(symbol_name);
     return &(it->second);
