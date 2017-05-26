@@ -152,6 +152,10 @@ typedef struct {
 #define ELF32_ST_TYPE(i) ((i)&0xf)
 #define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
 
+#define R_386_32     1
+#define R_386_PC32   2
+#define ELF32_R_INFO(s,t) (((s)<<8) + (u8)(t))
+
 // symbol binding
 #define STB_LOCAL     0
 #define STB_GLOBAL    1
@@ -182,6 +186,8 @@ typedef struct {
   Symbol symbol;
   string which_section_;
   string symbol_str_;
+  bool is_rel_;
+  Elf32Rel rel_; // the relocation section name is .rel + which_section_
 } Elf32Sym;
 
 #endif
