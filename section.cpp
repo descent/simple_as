@@ -228,30 +228,67 @@ Elf32Sym *get_symbol(const string &symbol_name)
 ElfSection *get_section(const string &section_name)
 {
   auto it = sections.find(section_name);
+  bool add_to_symbol_section = true;
+
   if (it == sections.end()) // not found
   {
     ElfSection section{section_name};
 
+    cout << "oo section_name: " << section_name << endl;
     if (section_name == ".text")
       section.init_text_section();
     else if (section_name == ".shstrtab")
+         {
            section.init_shstrtab_section();
+           add_to_symbol_section = false;
+         }
          else if (section_name == ".strtab")
+              {
                 section.init_shstrtab_section();
+                add_to_symbol_section = false;
+              }
               else if (section_name == ".symtab")
+                   {
                      section.init_symtab_section();
+                     add_to_symbol_section = false;
+                   }
                    else if (section_name == "") // null section
+                        {
                           section.init_null_section();
-                          else
+                          add_to_symbol_section = false;
+                        }
+                        else if (section_name == ".bss") 
+                             {
+                               section.init_bss_section();
+                             }
+                        else
+                        {
+                          regex re("^.rel.*");
+                          bool found = regex_match(section_name, re);
+                          if (found)
                           {
-                            section.init_other_section();
+                            add_to_symbol_section = false;
+                            cout << "find rel" << endl;
+                            section.init_rel_section();
                           }
+                          else
+                            section.init_other_section();
+                        }
 
     sections.insert({section_name, section});
     auto new_it = sections.find(section_name);
     cout << "yy add new section: " << section_name << endl;
     section_string.insert(section_name);
 
+    if (add_to_symbol_section)
+    {
+      Elf32Sym *sym = get_symbol(section_name);
+
+      u8 b = 0;
+      u8 t = STT_SECTION;
+      sym->symbol.st_info |= ELF32_ST_INFO(b, t);
+      sym->which_section_ = section_name;
+    }
     if (new_it == sections.end()) // not found
     {
       cout << "something error, should not go here" << endl;
