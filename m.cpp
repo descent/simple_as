@@ -500,7 +500,8 @@ int push_func(const Line &l)
 
   if (op1_type == SYMBOL)
   {
-    Elf32Sym *sym = get_symbol(l[1]);
+    //Elf32Sym *sym = get_symbol(l[1]);
+    Elf32Sym *sym = get_symbol("LC1");
 
     int imm32 = 0;
     op = 0x68;
@@ -510,7 +511,7 @@ int push_func(const Line &l)
     sym->is_rel_ = true;
     sym->which_section_ = cur_elf_section->sec_name();
     sym->rel_.r_offset = cur_elf_section->length();
-    sym->rel_.r_info = ELF32_R_INFO(4, R_386_PC32);
+    sym->rel_.r_info = ELF32_R_INFO(3, R_386_32); // LC1
     cur_elf_section->write((u8*)&imm32, sizeof(imm32));
     gen_len = 5;
   }
@@ -567,8 +568,23 @@ int call_func(const Line &l)
 
   if (op1_type == SYMBOL)
   {
+    Elf32Sym *sym = get_symbol(l[1]);
+
+    sym->symbol_str_ = l[1];
+    sym->which_section_ = cur_elf_section->sec_name();
+    auto ret = elf_string.insert(l[1]);
+
     cur_elf_section->write((u8*)&op, 1);
     cout << cur_elf_section->sec_name() << " ## size: " << cur_elf_section->length() << endl;
+    sym->is_rel_ = true;
+    sym->symbol.st_shndx = -1;
+    sym->which_section_ = cur_elf_section->sec_name();
+    sym->rel_.r_offset = cur_elf_section->length();
+    sym->rel_.r_info = ELF32_R_INFO(8, R_386_PC32); // printf
+    u8 b = STB_GLOBAL;
+    u8 t = 0;
+    sym->symbol.st_info |= ELF32_ST_INFO(b, t);
+
     cur_elf_section->write((u8*)&rel32, sizeof(rel32));
   }
 
