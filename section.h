@@ -47,6 +47,9 @@ class ElfSection
     int init_symtab_section();
     int init_other_section();
     int init_null_section();
+    int init_bss_section();
+    int init_data_section();
+    int init_rel_section();
     int len_add(u32 len)
     {
       len_ += len;

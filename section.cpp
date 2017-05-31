@@ -317,6 +317,50 @@ ElfSection::ElfSection(const string &sec_name):
          init_other_section();
 #endif
 }
+int ElfSection::init_data_section()
+{
+  section_header_.sh_name = 0;
+  section_header_.sh_type = 1;
+  section_header_.sh_flags = 0x1|0x2;
+  section_header_.sh_addr = 0x0;
+  //section_header_.sh_offset = cur_pos + offset;
+  //section_header_.sh_size = i.second.length();
+  section_header_.sh_link = 0;
+  section_header_.sh_info = 0; // .text
+  section_header_.sh_addralign = 1;
+  section_header_.sh_entsize = 0;
+  return 0;
+}
+
+int ElfSection::init_bss_section()
+{
+  section_header_.sh_name = 0;
+  section_header_.sh_type = 8;
+  section_header_.sh_flags = 0x1|0x2;
+  section_header_.sh_addr = 0x0;
+  //section_header_.sh_offset = cur_pos + offset;
+  //section_header_.sh_size = i.second.length();
+  section_header_.sh_link = 0;
+  section_header_.sh_info = 0; // .text
+  section_header_.sh_addralign = 1;
+  section_header_.sh_entsize = 0;
+  return 0;
+}
+
+int ElfSection::init_rel_section()
+{
+  section_header_.sh_name = 0;
+  section_header_.sh_type = 9;
+  section_header_.sh_flags = 0x40;
+  section_header_.sh_addr = 0x0;
+  //section_header_.sh_offset = cur_pos + offset;
+  //section_header_.sh_size = i.second.length();
+  section_header_.sh_link = 7;
+  section_header_.sh_info = 8; // .text
+  section_header_.sh_addralign = 4;
+  section_header_.sh_entsize = sizeof(Elf32Rel);
+  return 0;
+}
 
 int ElfSection::init_text_section()
 {
