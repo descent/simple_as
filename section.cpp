@@ -52,6 +52,9 @@ auto get_total_section_size()
 
 int write_section_to_file(const string &fn)
 {
+  bool add2=false;
+  ElfSection *bss_section = get_section(".bss");
+  ElfSection *data_section = get_section(".data");
   ElfSection *symbol_section = get_section(".symtab");
 
   cout << "zz symbol_section->length(): " << symbol_section->length() << endl;
@@ -92,8 +95,8 @@ int write_section_to_file(const string &fn)
 
   ElfSection *section = get_section(".shstrtab");
 
-  u32 sec_name_index = 1;
-  section->write(&null_char, 1);
+  u32 sec_name_index = 0;
+  //section->write(&null_char, 1);
 
   for (auto &i : section_string)
   {
@@ -101,9 +104,19 @@ int write_section_to_file(const string &fn)
     if (sec)
       sec->set_name_index(sec_name_index);
 
-    section->write((const u8*)i.c_str(), i.length());
-    section->write(&null_char, 1);
-    sec_name_index += i.length() + 1;
+    if (i == "")
+    {
+      cout << "null section" << endl;
+      section->write(&null_char, 1);
+      sec_name_index += 1;
+    }
+    else
+    {
+      cout << "not null section" << endl;
+      section->write((const u8*)i.c_str(), i.length());
+      section->write(&null_char, 1);
+      sec_name_index += i.length() + 1;
+    }
   }
 
   u32 sec_index=0;
@@ -124,13 +137,44 @@ int write_section_to_file(const string &fn)
 #if 1
   symbol_section->section_header_.sh_link = sec_to_index[".strtab"];
 
+#if 0
+  {
+    // .rodata
+    Elf32Sym *sym = get_symbol("");
+
+    u8 b = 0;
+    u8 t = STT_SECTION;
+    sym->symbol.st_info |= ELF32_ST_INFO(b, t);
+    sym->symbol.st_shndx = 3;
+
+    // .text
+    sym = get_symbol(".text");
+    b = 0;
+    t = STT_SECTION;
+    sym->symbol.st_info |= ELF32_ST_INFO(b, t);
+    sym->symbol.st_shndx = 7;
+  }
+#endif
+  cout << "elf_symbol.size(): " << elf_symbol.size() << endl;
   for(auto &i : elf_symbol)
   {
     Elf32Sym symbol = i.second;
+    cout << "symbol name str: " << i.first << endl;
 
     symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
-    symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+    if (-1 == symbol.symbol.st_shndx)
+      symbol.symbol.st_shndx = 0;
+    else
+      symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
 
+    if (i.second.symbol_str_ == "LC1")
+      symbol.symbol.st_shndx = 4;
+    if (i.second.symbol_str_ == "printf")
+      symbol.symbol.st_shndx = 0;
+#if 0
+    if (i.second.symbol_str_ == "")
+      symbol.symbol.st_shndx = 3;
+#endif
     //symbol.symbol.st_info = 0;
     cout << "rr symbol.symbol.st_info: " << (u32)symbol.symbol.st_info << endl;
 
@@ -141,6 +185,7 @@ int write_section_to_file(const string &fn)
 
   // note ref: elf document 1-13, should greate last local symbol index
   symbol_section->section_header_.sh_info = elf_symbol.size()+2; // work around
+  //symbol_section->section_header_.sh_info = 5;
   //symbol_section->section_header_.sh_info = 100;
 
   //symbol_section = get_section(".symtab");
@@ -157,7 +202,7 @@ int write_section_to_file(const string &fn)
   elf_header.e_version = 1;
   elf_header.e_entry = 0;
   elf_header.e_phoff = 0;
-  elf_header.e_shoff = sizeof(Elf32Ehdr);                /* section header 节头部偏移量 */
+  elf_header.e_shoff = sizeof(Elf32Ehdr) + get_total_section_size();                /* section header offset */
   elf_header.e_flags = 0;                /* 处理器特定标志 */
   elf_header.e_ehsize = sizeof(Elf32Ehdr);               /* elf头部长度 */
   elf_header.e_phentsize = 0;            /* 程序头部中一个条目的长度 */
@@ -168,10 +213,38 @@ int write_section_to_file(const string &fn)
 
   fwrite(&elf_header, 1, sizeof(Elf32Ehdr), fs);
 
-  u32 cur_pos = sizeof(Elf32Ehdr) + sizeof(Elf32Shdr) * elf_header.e_shnum;
+  // u32 cur_pos = sizeof(Elf32Ehdr) + sizeof(Elf32Shdr) * elf_header.e_shnum;
+  u32 cur_pos = sizeof(Elf32Ehdr);
 
   //for(int i=0 ; i < sections.size() ; ++i)
   u32 offset = 0;
+
+  // write section content to a file
+  for(auto &i : sections)
+  {
+    cout << "write section name: " << i.first << ", size: " << i.second.length() << endl;
+    auto buf = i.second.data();
+    #if 0
+    if (i.second.sec_name() == ".rel.text")
+    {
+      fwrite(buf, 1, 4, fs);
+    }
+    #endif
+    fwrite(buf, 1, i.second.length(), fs);
+
+    //Elf32Shdr section_header = i.second.section_header_;
+    cout << "qq cur_pos: " << cur_pos << endl;
+    if (i.second.section_header_.sh_type == 0) // null
+      i.second.section_header_.sh_offset = 0;
+    else
+      i.second.section_header_.sh_offset = cur_pos;
+    cur_pos += i.second.length();
+  }
+
+  auto fpos = ftell(fs);
+
+  cout << "aa fops: " << fpos << endl;
+
   // write section header to a file
   for(auto &i : sections)
   {
@@ -179,10 +252,28 @@ int write_section_to_file(const string &fn)
 
     //section_header.sh_name = (elf32_word)"abc";
     section_header.sh_name = i.second.name_index();
-    cout << "i: " << i.second.sec_name() << endl;;
-    cout << "section_header.sh_name: " << section_header.sh_name << endl;
+    #if 0
+    if (i.second.sec_name() == ".rel.text")
+    {
+      add2 = true;
+      //section_header.sh_offset = cur_pos + offset;
+      //section_header.sh_offset = cur_pos + offset + 2;
+    }
+    if (add2)
+      section_header.sh_offset = cur_pos + offset + 4;
+    else
+    {
+      section_header.sh_offset = cur_pos + offset;
+    }
     section_header.sh_offset = cur_pos + offset;
+    #endif
     section_header.sh_size = i.second.length();
+
+    cout << "write section header: " << i.second.sec_name() << endl;;
+    cout << "section_header.sh_name: " << section_header.sh_name << endl;
+    cout << "section_header.sh_offset: " << section_header.sh_offset << endl;
+    cout << "section_header.sh_size: " << section_header.sh_size << endl;
+
     #if 0
     section_header.sh_type = 1;
     section_header.sh_flags = 0x4;
@@ -198,13 +289,6 @@ int write_section_to_file(const string &fn)
     offset += section_header.sh_size;
   }
 
-  // write section content to a file
-  for(auto &i : sections)
-  {
-    cout << "write section name: " << i.first << ", size: " << i.second.length() << endl;
-    auto buf = i.second.data();
-    fwrite(buf, 1, i.second.length(), fs);
-  }
   fclose(fs);
   return 0;
 }
