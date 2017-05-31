@@ -355,6 +355,10 @@ ElfSection *get_section(const string &section_name)
                              {
                                section.init_bss_section();
                              }
+                        else if (section_name == ".data") 
+                             {
+                               section.init_data_section();
+                             }
                         else
                         {
                           regex re("^.rel.*");
