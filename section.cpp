@@ -1,6 +1,10 @@
 #include "section.h"
 
+
+#include <cstdlib>
 #include <cstdio>
+#include <iostream>
+#include <regex>
 
 using namespace std;
 
