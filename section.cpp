@@ -40,6 +40,16 @@ namespace
   map<string, ElfSection> sections;
 }
 
+auto get_total_section_size()
+{
+  auto total_section_size = 0;
+  for (auto &i : sections)
+  {
+    total_section_size += i.second.length(); 
+  }
+  return total_section_size;
+}
+
 int write_section_to_file(const string &fn)
 {
   ElfSection *symbol_section = get_section(".symtab");
