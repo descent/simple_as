@@ -228,6 +228,24 @@ int write_section_to_file(const string &fn)
   {
     cout << "write section name: " << i.first << ", size: " << i.second.length() << endl;
     auto buf = i.second.data();
+    if (i.second.section_header_.sh_addralign == 4)
+    {
+      auto fpos = ftell(fs);
+      auto fpos_align4 = alignment4(fpos);
+      if (fpos != fpos_align4)
+      {
+      cout << "fpos: " << fpos << endl;
+      cout << "fpos_align4: " << fpos_align4 << endl;
+      cout << "bef ftell(fs): " << ftell(fs) << endl;
+      #if 1
+      fseek(fs, fpos_align4 - fpos, SEEK_CUR);
+      cout << "ftell(fs): " << ftell(fs) << endl;
+
+      cur_pos += (fpos_align4 - fpos);
+      elf_header.e_shoff += fpos_align4 - fpos;
+      #endif
+      }
+    }
     #if 0
     if (i.second.sec_name() == ".rel.text")
     {
@@ -244,10 +262,6 @@ int write_section_to_file(const string &fn)
       i.second.section_header_.sh_offset = cur_pos;
     cur_pos += i.second.length();
   }
-
-  auto fpos = ftell(fs);
-
-  cout << "aa fops: " << fpos << endl;
 
   // write section header to a file
   for(auto &i : sections)
@@ -293,6 +307,8 @@ int write_section_to_file(const string &fn)
     offset += section_header.sh_size;
   }
 
+  fseek(fs, 0, SEEK_SET); // rewrite elf header, because of modifing elf_header.e_shoff .
+  fwrite(&elf_header, 1, sizeof(Elf32Ehdr), fs);
   fclose(fs);
   return 0;
 }
