@@ -160,11 +160,17 @@ int write_section_to_file(const string &fn)
   }
 #endif
   cout << "elf_symbol.size(): " << elf_symbol.size() << endl;
+  u32 local_index = 0;
   for(auto &i : elf_symbol)
   {
     Elf32Sym symbol = i.second;
     cout << "symbol name str: " << i.first << endl;
 
+    auto st_info = symbol.symbol.st_info;
+    if (ELF32_ST_BIND(st_info) != STB_LOCAL)
+      continue;
+
+    ++local_index;
     symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
     if (-1 == symbol.symbol.st_shndx)
       symbol.symbol.st_shndx = 0;
@@ -188,11 +194,48 @@ int write_section_to_file(const string &fn)
 #endif
 
   // note ref: elf document 1-13, should greate last local symbol index
-  symbol_section->section_header_.sh_info = elf_symbol.size()+2; // work around
+  //symbol_section->section_header_.sh_info = elf_symbol.size()+2; // work around
+  symbol_section->section_header_.sh_info = 9;
+  symbol_section->section_header_.sh_info = local_index+1;
   //symbol_section->section_header_.sh_info = 5;
   //symbol_section->section_header_.sh_info = 100;
 
   //symbol_section = get_section(".symtab");
+
+  for(auto &i : elf_symbol)
+  {
+    Elf32Sym symbol = i.second;
+    cout << "symbol name str: " << i.first << endl;
+
+    auto st_info = symbol.symbol.st_info;
+    if (ELF32_ST_BIND(st_info) == STB_LOCAL)
+      continue;
+
+    symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
+    if (-1 == symbol.symbol.st_shndx)
+      symbol.symbol.st_shndx = 0;
+    else
+      symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+
+    if (i.second.symbol_str_ == "LC1")
+      symbol.symbol.st_shndx = 4;
+    if (i.second.symbol_str_ == "printf")
+      symbol.symbol.st_shndx = 0;
+#if 0
+    if (i.second.symbol_str_ == "")
+      symbol.symbol.st_shndx = 3;
+#endif
+    //symbol.symbol.st_info = 0;
+    cout << "rr symbol.symbol.st_info: " << (u32)symbol.symbol.st_info << endl;
+
+    symbol_section->write((const u8 *)&symbol.symbol, sizeof(Symbol));
+    //cout << "  symbol.st_name: " << symbol.st_name << endl;
+  }
+
+
+
+
+
 
 
   FILE *fs;
