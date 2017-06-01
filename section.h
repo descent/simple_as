@@ -30,6 +30,18 @@ enum Section
   FOREACH_FRUIT(GENERATE_ENUM)
 };
 
+static inline u32 alignment4(u32 val)
+{
+  if ((val & 3) == 0) // alignment 4
+  {
+  }
+  else
+  {
+    val += 0x4;
+    val &= (~3);
+  }
+  return val;
+}
 
 extern map<string, Elf32Sym> elf_symbol;
 extern set<string> elf_string;
