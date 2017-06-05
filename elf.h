@@ -172,6 +172,10 @@ typedef struct {
 #define STT_LOPROC    13
 #define STT_HIPROC    15
 
+#define SYM_DEFINED   0x1
+#define SYM_USED      0x2
+
+// for elf symbol table section
 struct Symbol
 {
   elf32_word    st_name;
@@ -182,12 +186,27 @@ struct Symbol
   elf32_half st_shndx;
 };
 
+// for example
+#if 0
+.section .rodata
+LC1:
+    .string "1+2 = %d\n"
+
+.text
+pushl $LC1
+
+LC which_section_ : .rodata
+LC which_rel_section_ : .text, so I can put it to .rel.text section
+#endif
+
 typedef struct {
   Symbol symbol;
   string which_section_;
+  string which_rel_section_;
   string symbol_str_;
   bool is_rel_;
   Elf32Rel rel_; // the relocation section name is .rel + which_section_
+  int symbol_state_;
 } Elf32Sym;
 
 #endif
