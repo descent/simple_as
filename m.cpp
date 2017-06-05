@@ -93,7 +93,7 @@ int check_operand_type(const string &str)
     if (is_num(c_str+1)) // c_str[0]: '$'
       return IMM32;
     else
-      return SYMBOL;
+      return (SYMBOL | IMM32);
   }
   return UNKNOWN;
 }
@@ -508,10 +508,22 @@ int push_func(const Line &l)
     gen_len = 1;
   }
 
-  if (op1_type == SYMBOL)
+  //if ((op1_type | SYMBOL) != SYMBOL)
+  if ((op1_type & SYMBOL) != 0)
   {
-    //Elf32Sym *sym = get_symbol(l[1]);
-    Elf32Sym *sym = get_symbol("LC1");
+    cout << "yy symbol op1_type: " << op1_type << endl;
+    Elf32Sym *sym;
+    //Elf32Sym *sym = get_symbol("LC1");
+    #if 1
+    if ((op1_type & IMM32) != 0)
+    { // strip $
+      sym = get_symbol(l[1].substr(1));
+    }
+    else
+    {
+      sym = get_symbol(l[1]);
+    }
+    #endif
 
     int imm32 = 0;
     op = 0x68;
