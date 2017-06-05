@@ -54,6 +54,70 @@ auto get_total_section_size()
   return total_section_size;
 }
 
+map<string, u32> str_to_index; // .strtab section index
+map<string, u32> sec_to_index; // section index
+
+int write_symbol_section(bool local)
+{
+  ElfSection *symbol_section = get_section(".symtab");
+
+  int local_index = 0;
+
+  for(auto &i : elf_symbol)
+  {
+    Elf32Sym symbol = i.second;
+
+    auto st_info = symbol.symbol.st_info;
+
+    if (local == true) // write STB_LOCAL
+    {
+      if (ELF32_ST_BIND(st_info) != STB_LOCAL)
+        continue;
+    }
+    else
+    {
+      if (ELF32_ST_BIND(st_info) == STB_LOCAL)
+        continue;
+    }
+
+    cout << "local symbol name str: " << i.first << endl;
+
+    ++local_index;
+    symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
+
+    //if (symbol.symbol_state_ == 0 || (symbol.symbol_state_ & SYM_DEFINED) == 0)
+
+    if ((ELF32_ST_TYPE(symbol.symbol.st_info) & STT_SECTION) != 0) // STT_SECTION type symbol
+    {
+      symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+    }
+    else
+    {
+      if ((symbol.symbol_state_ & SYM_DEFINED) == 0)
+      { // symbol.symbol_state_ is not SYM_DEFINED
+        symbol.symbol.st_shndx = 0;
+      }
+      else
+        symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+    }
+#if 0
+    if (i.second.symbol_str_ == "LC1")
+      symbol.symbol.st_shndx = 4;
+    if (i.second.symbol_str_ == "printf")
+      symbol.symbol.st_shndx = 0;
+    if (i.second.symbol_str_ == "")
+      symbol.symbol.st_shndx = 3;
+#endif
+    //symbol.symbol.st_info = 0;
+    cout << "rr symbol.symbol.st_info: " << (u32)symbol.symbol.st_info << endl;
+
+    symbol_section->write((const u8 *)&symbol.symbol, sizeof(Symbol));
+    //cout << "  symbol.st_name: " << symbol.st_name << endl;
+  }
+
+  return local_index;
+}
+
 int write_section_to_file(const string &fn)
 {
   bool add2=false;
@@ -66,7 +130,6 @@ int write_section_to_file(const string &fn)
   get_section("");
   u8 null_char = '\0';
 
-  map<string, u32> str_to_index; // .strtab section index
   {
     u32 str_index = 1;
 
@@ -84,14 +147,18 @@ int write_section_to_file(const string &fn)
 
   }
 
+  int ii=0;
+  // write data to .rel* section class
   for(auto &i : elf_symbol)
   {
 #if 1
     if (i.second.is_rel_ == true)
     {
-      string rel_section_name = ".rel" + i.second.which_section_;
+      string rel_section_name = ".rel" + i.second.which_rel_section_;
       ElfSection *sec = get_section(rel_section_name);
       sec->write((u8 *)&i.second.rel_, sizeof(i.second.rel_));
+      cout << ii << " ## write rel*: " << i.first << endl;
+      ++ii;
     }
 #endif
 
@@ -123,8 +190,7 @@ int write_section_to_file(const string &fn)
     }
   }
 
-  u32 sec_index=0;
-  map<string, u32> sec_to_index;
+  int sec_index=0;
 
   // generate section name, index pair
   for(auto &i : sections)
@@ -160,28 +226,41 @@ int write_section_to_file(const string &fn)
   }
 #endif
   cout << "elf_symbol.size(): " << elf_symbol.size() << endl;
-  u32 local_index = 0;
+
+  int local_index = write_symbol_section(true);
+#if 0
   for(auto &i : elf_symbol)
   {
     Elf32Sym symbol = i.second;
-    cout << "symbol name str: " << i.first << endl;
 
     auto st_info = symbol.symbol.st_info;
     if (ELF32_ST_BIND(st_info) != STB_LOCAL)
       continue;
+    cout << "local symbol name str: " << i.first << endl;
 
     ++local_index;
     symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
-    if (-1 == symbol.symbol.st_shndx)
-      symbol.symbol.st_shndx = 0;
-    else
-      symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
 
+    //if (symbol.symbol_state_ == 0 || (symbol.symbol_state_ & SYM_DEFINED) == 0)
+
+    if ((ELF32_ST_TYPE(symbol.symbol.st_info) & STT_SECTION) != 0) // STT_SECTION type symbol
+    {
+      symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+    }
+    else
+    {
+      if ((symbol.symbol_state_ & SYM_DEFINED) == 0)
+      { // symbol.symbol_state_ is not SYM_DEFINED
+        symbol.symbol.st_shndx = 0;
+      }
+      else
+        symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+    }
+#if 0
     if (i.second.symbol_str_ == "LC1")
       symbol.symbol.st_shndx = 4;
     if (i.second.symbol_str_ == "printf")
       symbol.symbol.st_shndx = 0;
-#if 0
     if (i.second.symbol_str_ == "")
       symbol.symbol.st_shndx = 3;
 #endif
@@ -191,34 +270,48 @@ int write_section_to_file(const string &fn)
     symbol_section->write((const u8 *)&symbol.symbol, sizeof(Symbol));
     //cout << "  symbol.st_name: " << symbol.st_name << endl;
   }
+#endif
 #endif
 
   // note ref: elf document 1-13, should greate last local symbol index
   //symbol_section->section_header_.sh_info = elf_symbol.size()+2; // work around
-  symbol_section->section_header_.sh_info = 9;
+  //symbol_section->section_header_.sh_info = 9;
   symbol_section->section_header_.sh_info = local_index+1;
   //symbol_section->section_header_.sh_info = 5;
   //symbol_section->section_header_.sh_info = 100;
 
+  local_index = write_symbol_section(false);
+
   //symbol_section = get_section(".symtab");
 
+#if 0
   for(auto &i : elf_symbol)
   {
     Elf32Sym symbol = i.second;
-    cout << "symbol name str: " << i.first << endl;
 
     auto st_info = symbol.symbol.st_info;
     if (ELF32_ST_BIND(st_info) == STB_LOCAL)
       continue;
+    cout << "symbol name str: " << i.first << endl;
 
     symbol.symbol.st_name = str_to_index[i.second.symbol_str_];
+
+    if (symbol.symbol_state_ == 0 || (symbol.symbol_state_ & SYM_DEFINED) == 0)
+    { // symbol.symbol_state_ is not SYM_DEFINED
+      symbol.symbol.st_shndx = 0;
+    }
+    else
+      symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+
+#if 0
     if (-1 == symbol.symbol.st_shndx)
       symbol.symbol.st_shndx = 0;
     else
       symbol.symbol.st_shndx = sec_to_index[i.second.which_section_];
+#endif
 
-    if (i.second.symbol_str_ == "LC1")
-      symbol.symbol.st_shndx = 4;
+//    if (i.second.symbol_str_ == "LC1")
+//      symbol.symbol.st_shndx = 4;
     if (i.second.symbol_str_ == "printf")
       symbol.symbol.st_shndx = 0;
 #if 0
@@ -231,7 +324,7 @@ int write_section_to_file(const string &fn)
     symbol_section->write((const u8 *)&symbol.symbol, sizeof(Symbol));
     //cout << "  symbol.st_name: " << symbol.st_name << endl;
   }
-
+#endif
 
 
 
