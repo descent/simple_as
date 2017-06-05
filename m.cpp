@@ -347,6 +347,7 @@ int gas_global_func(const Line &l)
   return 0;
 }
 
+// label means defining a symbol
 int label_func(const Line &l)
 {
   cout << "handle label: " << l[0] << endl;
@@ -354,20 +355,29 @@ int label_func(const Line &l)
   regex re(":$");
   string str = regex_replace(l[0], re, "");
 
-  auto ret = elf_string.insert(str);
+#if 0
   if (ret.second == false)
   {
     cout << "symbol '" << str << "' is already defined" << endl;
     exit(1);
   }
+#endif
 
   Elf32Sym *symbol = get_symbol(str);
 
+  if ((symbol->symbol_state_ & SYM_DEFINED) != 0)
+  {
+    cout << "Error: symbol '" << str << "' is already defined" << endl;
+    exit(1);
+  }
+
   symbol->symbol_str_ = str;
   symbol->which_section_ = cur_elf_section->sec_name();
+  symbol->symbol_state_ |= SYM_DEFINED;
   //elf_symbol.insert({cur_elf_section->sec_name(), symbol});
   //elf_symbol.insert({str, symbol});
 
+  auto ret = elf_string.insert(str);
   return 0;
 }
 
