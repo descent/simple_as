@@ -534,7 +534,8 @@ int push_func(const Line &l)
     //sym->which_section_ = cur_elf_section->sec_name();
     sym->which_rel_section_ = cur_elf_section->sec_name();
     sym->rel_.r_offset = cur_elf_section->length();
-    sym->rel_.r_info = ELF32_R_INFO(3, R_386_32); // LC1
+    //sym->rel_.r_info = ELF32_R_INFO(3, R_386_32); // LC1
+    sym->rel_type_ = R_386_32;
     cur_elf_section->write((u8*)&imm32, sizeof(imm32));
     gen_len = 5;
   }
@@ -603,8 +604,9 @@ int call_func(const Line &l)
     sym->symbol.st_shndx = -1;
     sym->which_rel_section_ = cur_elf_section->sec_name();
     sym->rel_.r_offset = cur_elf_section->length();
-    sym->rel_.r_info = ELF32_R_INFO(7, R_386_PC32); // printf
-    u8 b = STB_GLOBAL;
+    //sym->rel_.r_info = ELF32_R_INFO(7, R_386_PC32); // printf
+    sym->rel_type_ = R_386_PC32;
+    u8 b = STB_GLOBAL; // how to determine STB_GLOBAL or not
     u8 t = 0;
     sym->symbol.st_info |= ELF32_ST_INFO(b, t);
 
