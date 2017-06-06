@@ -154,6 +154,13 @@ typedef struct {
 
 #define R_386_32     1
 #define R_386_PC32   2
+
+// symbol table index
+#define ELF32_R_SYM(i) ((i)>>8)
+
+// ex: R_386_32
+#define ELF32_R_TYPE(i) ((unsigned char)(i)
+
 #define ELF32_R_INFO(s,t) (((s)<<8) + (u8)(t))
 
 // symbol binding
@@ -201,11 +208,12 @@ LC which_rel_section_ : .text, so I can put it to .rel.text section
 
 typedef struct {
   Symbol symbol;
-  string which_section_;
-  string which_rel_section_;
+  string which_section_;      // the relocation symbol relongs to .rodata
+  string which_rel_section_;  // but relocate it in .rel.text
   string symbol_str_;
   bool is_rel_;
-  Elf32Rel rel_; // the relocation section name is .rel + which_section_
+  Elf32Rel rel_; // the relocation section name is .rel + which_rel_section_
+  int rel_type_; // Relocation Types
   int symbol_state_;
 } Elf32Sym;
 
