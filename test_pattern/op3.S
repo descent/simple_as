@@ -1,3 +1,5 @@
+# x86 call instruction
+# ref: https://stackoverflow.com/questions/20264452/x86-function-call-types
 .section .rodata
 LC1: 
     .string "1+2 = %d\n"
